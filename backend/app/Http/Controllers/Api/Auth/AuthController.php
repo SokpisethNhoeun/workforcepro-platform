@@ -25,7 +25,13 @@ class AuthController extends Controller
     {
         $user = $this->authService->register($request->validated());
 
-        return ApiResponse::success(new UserResource($user), 'Registration successful. Verification code queued.', 201);
+        $data = [
+            'user'         => new UserResource($user),
+            'access_token' => $user->createToken('workforcepro-api')->plainTextToken,
+            'token_type'   => 'Bearer',
+        ];
+
+        return ApiResponse::success($data, 'Registration successful. Verification code queued.', 201);
     }
 
     public function login(LoginRequest $request): JsonResponse
@@ -96,6 +102,27 @@ class AuthController extends Controller
         if ($status !== Password::PASSWORD_RESET) {
             throw ValidationException::withMessages(['email' => [__($status)]]);
         }
+
+        return ApiResponse::success(null, 'Password reset successful.');
+    }
+
+    public function sendResetOtp(Request $request): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'email']]);
+        $this->authService->sendPasswordResetOtp($request->input('email'));
+
+        return ApiResponse::success(null, 'If an account with that email exists, a reset code has been sent.');
+    }
+
+    public function resetPasswordWithOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email'                 => ['required', 'email'],
+            'code'                  => ['required', 'string', 'size:6'],
+            'password'              => ['required', 'confirmed', PasswordRule::defaults()],
+        ]);
+
+        $this->authService->resetPasswordWithOtp($data['email'], $data['code'], $data['password']);
 
         return ApiResponse::success(null, 'Password reset successful.');
     }

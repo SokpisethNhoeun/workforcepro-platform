@@ -16,7 +16,7 @@ An end-to-end Enterprise HR / workforce-management platform. Employees, attendan
                        ┌───────────────────────┼────────────────────────┐
                        ▼                       ▼                        ▼
                 ┌──────────────┐       ┌──────────────┐         ┌──────────────┐
-                │ MySQL / Maria│       │  Redis (sess │         │ Gmail SMTP   │
+                │ PostgreSQL   │       │  Redis (sess │         │ Gmail SMTP   │
                 │  (port 15432)│       │  / cache /Q) │         │  (OTP / mail)│
                 └──────────────┘       └──────────────┘         └──────────────┘
 ```
@@ -26,9 +26,9 @@ An end-to-end Enterprise HR / workforce-management platform. Employees, attendan
 | Frontend | Next.js 16 (App Router, Turbopack), TypeScript, React 19, Tailwind v4 |
 | UI kit | HeroUI (inputs/buttons/dropdowns/tabs), shadcn/ui (sidebar, layout), DayFlow Calendar, Sileo toasts, lucide-react icons |
 | Forms / data | react-hook-form + zod, axios, next-themes |
-| Backend | Laravel 11, PHP 8.x, REST API, FormRequest validation, JsonResource responses |
+| Backend | Laravel 13, PHP 8.3+, REST API, FormRequest validation, JsonResource responses |
 | Auth | Laravel Sanctum (Personal Access Tokens) + Gmail OTP for verification + Spatie Permission |
-| Database | MySQL / MariaDB |
+| Database | PostgreSQL 17 |
 | Async | Redis (session, cache, queues), Gmail SMTP |
 
 ---
@@ -125,12 +125,12 @@ All modules ship end-to-end (Controller → Service → FormRequest → Resource
 
 ## 5. Frontend conventions
 
-- **API client:** `src/lib/api/client.ts`. Axios instance with `withCredentials: true`, base URL from `NEXT_PUBLIC_API_URL`.
+- **API client:** `src/lib/api/client.ts`. Axios instance with `withCredentials: false`, base URL from `NEXT_PUBLIC_API_URL`.
   - `api` — axios instance
   - `sanitizePayload(values)` — strips `""`, `null`, `undefined` before POST/PUT so Laravel's `exists` / `date` / `email` rules don't reject empty strings. **Always call this on form payloads.**
   - `apiErrorMessage(err)` — flattens Laravel validation errors to a single string for toasts.
   - `csrf()` — a no-op (the API is stateless, Bearer-token only).
-- **Lookups:** `useLookup("employees")` / `useLookup("positions", { department_id })`. Backed by `/api/v1/lookups/*` endpoints. Parametrised lookups re-fetch when params change, used for cascading dropdowns.
+- **Lookups:** `useLookup("employees")` / `useLookup("positions", { department_id })`. Backed by the normal module list endpoints. Parametrised lookups re-fetch when params change, used for cascading dropdowns.
 - **Forms:** `react-hook-form` + `zod`. Reusable `<FormField>`, `<FormSelect>`, `<FormCombobox>`, `<FormDate>`, `<FormTextarea>` wrap HeroUI/shadcn inputs and wire up errors automatically.
 - **Sidebar:** `nav-main.tsx` is a controlled accordion. Only one section is open at a time, and the active section opens based on `pathname`. Permission-gated items are filtered out of the visible list.
 - **Theme:** `next-themes` with `attribute="class"`. The user-menu dropdown cycles light → dark → system. The Sileo `<Toaster>` receives a `theme` prop derived from `resolvedTheme` (flipped to compensate for Sileo's inverted naming) so the toast contrast tracks the app theme.
@@ -144,7 +144,7 @@ All modules ship end-to-end (Controller → Service → FormRequest → Resource
 
 - PHP 8.x with composer
 - Node 20+ with npm or pnpm
-- MySQL / MariaDB
+- PostgreSQL
 - Redis
 - Docker Compose (optional)
 
@@ -156,7 +156,7 @@ The provided compose file uses project-scoped container names and alternate host
 |---|---|
 | frontend | **3001** |
 | backend | **18000** |
-| MySQL / MariaDB | 15432 |
+| PostgreSQL | 15432 |
 | Redis | 16379 |
 
 ```bash
@@ -241,7 +241,7 @@ Open <http://localhost:3001>. Default seeded admin: `admin@workforcepro.test` / 
 - Always protect routes by role / permission.
 - Reuse components — don't copy form scaffolding between modules; extend the helpers in `src/components/form`.
 - Before coding a big feature, write a plan.
-- Trust the documented compose ports — frontend 3001, backend 18000, MySQL 15432, Redis 16379.
+- Trust the documented compose ports: frontend 3001, backend 18000, PostgreSQL 15432, Redis 16379.
 
 ---
 

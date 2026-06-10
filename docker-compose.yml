@@ -35,7 +35,7 @@ services:
       REDIS_HOST: redis
       APP_URL: http://localhost:18000
       FRONTEND_URL: http://localhost:3001
-      SANCTUM_STATEFUL_DOMAINS: localhost:3001,127.0.0.1:3001
+      SANCTUM_STATEFUL_DOMAINS:
     ports:
       - "18000:8000"
     volumes:
