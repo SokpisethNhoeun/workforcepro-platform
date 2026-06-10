@@ -1,63 +1,109 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# WorkforcePro Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel API for the WorkforcePro HR platform.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Laravel 13
+- PHP 8.3+
+- PostgreSQL
+- Redis for cache, queues, and sessions
+- Laravel Sanctum personal access tokens
+- Spatie Permission for RBAC
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Local Setup
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+From the repository root, Docker Compose is the recommended path:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+docker compose up -d
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+The backend is exposed at `http://localhost:18000`.
 
-## Contributing
+Manual setup:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve --port=18000
+```
 
-## Code of Conduct
+Important environment values:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```env
+APP_URL=http://localhost:18000
+FRONTEND_URL=http://localhost:3001
+DB_CONNECTION=pgsql
+SANCTUM_STATEFUL_DOMAINS=
+CORS_ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+```
 
-## Security Vulnerabilities
+`SANCTUM_STATEFUL_DOMAINS` should stay empty because this API uses bearer tokens, not Sanctum cookie sessions.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Useful Commands
 
-## License
+```bash
+php artisan route:list --path=api/v1
+php artisan migrate:fresh --seed
+php artisan test
+vendor/bin/pint
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Seeded Login Accounts
 
+Run `php artisan migrate:fresh --seed` to recreate the database with these role accounts:
 
- Ports 3000, 8000, 5432, and 6379 are already occupied by that other stack. I’m patching this
-  Compose setup to use project-scoped container names and alternate host ports: frontend 3001,
-  backend 18000, Postgres 15432, Redis 16379
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `ahboy5518@gmail.com` | `Sethadmin@12` |
+| HR | `ahboy5519@gmail.com` | `Sethadmin@12` |
+| Manager | `ahboy1819@gmail.com` | `Sethadmin@12` |
+| Employee | `sokpisethnhom09631@gmail.com` | `Sethadmin@12` |
+
+## Swagger UI
+
+Swagger UI is available from the backend:
+
+- `http://localhost:18000/docs`
+- `http://localhost:18000/swagger`
+- `http://localhost:18000/api/documentation`
+
+The OpenAPI JSON is served at `http://localhost:18000/openapi.json`.
+
+## API Shape
+
+Routes live in `routes/api.php` under `/api/v1`. Protected routes use `auth:sanctum` and permission middleware. Writes should use FormRequest validation, service-layer business logic, and `ApiResponse` envelopes.
+
+## Auth, OTP, and Password Flow
+
+Register:
+
+1. `POST /api/v1/auth/register`
+2. Body: `name`, `email`, optional `phone`, `password`, `password_confirmation`
+3. The API creates the user with the `Employee` role and queues a 6-digit email OTP.
+4. Login to get a bearer token, then verify the OTP with `POST /api/v1/auth/email/verify`.
+
+Email verification OTP:
+
+1. `POST /api/v1/auth/email/resend` with bearer token to send a new code.
+2. `POST /api/v1/auth/email/verify` with bearer token and body `{ "code": "123456" }`.
+3. OTP codes expire after 10 minutes.
+
+Login:
+
+1. `POST /api/v1/auth/login`
+2. Body: `email`, `password`, optional `remember`
+3. Copy `data.access_token` from the response.
+4. Use `Authorization: Bearer <token>` for protected endpoints.
+
+Forgot password:
+
+1. `POST /api/v1/auth/forgot-password` with body `{ "email": "user@example.com" }`.
+2. The API queues a Laravel password reset email.
+3. Submit the emailed token to `POST /api/v1/auth/reset-password` with `token`, `email`, `password`, and `password_confirmation`.
+
+Email delivery depends on the configured mailer and queue worker. In local development, keep the queue worker running when `QUEUE_CONNECTION` is not `sync`.

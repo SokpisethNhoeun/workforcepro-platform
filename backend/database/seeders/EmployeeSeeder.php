@@ -14,11 +14,13 @@ class EmployeeSeeder extends Seeder
 {
     public function run(): void
     {
+        $password = 'Sethadmin@12';
+
         $users = [
-            ['role' => 'Admin', 'name' => 'Workforce Admin', 'email' => 'admin@workforcepro.test', 'code' => 'WFP-0001', 'department' => 'HR', 'position' => 'HR-DIR'],
-            ['role' => 'HR', 'name' => 'Sokha HR', 'email' => 'hr@workforcepro.test', 'code' => 'WFP-0002', 'department' => 'HR', 'position' => 'HR-SPEC'],
-            ['role' => 'Manager', 'name' => 'Dara Manager', 'email' => 'manager@workforcepro.test', 'code' => 'WFP-0003', 'department' => 'OPS', 'position' => 'OPS-MGR'],
-            ['role' => 'Employee', 'name' => 'Chan Employee', 'email' => 'employee@workforcepro.test', 'code' => 'WFP-0004', 'department' => 'ENG', 'position' => 'ENG-SE'],
+            ['role' => 'Admin', 'name' => 'Workforce Admin', 'email' => 'ahboy5518@gmail.com', 'code' => 'WFP-0001', 'department' => 'HR', 'position' => 'HR-DIR'],
+            ['role' => 'HR', 'name' => 'Sokha HR', 'email' => 'ahboy5519@gmail.com', 'code' => 'WFP-0002', 'department' => 'HR', 'position' => 'HR-SPEC'],
+            ['role' => 'Manager', 'name' => 'Dara Manager', 'email' => 'ahboy1819@gmail.com', 'code' => 'WFP-0003', 'department' => 'OPS', 'position' => 'OPS-MGR'],
+            ['role' => 'Employee', 'name' => 'Chan Employee', 'email' => 'sokpisethnhom09631@gmail.com', 'code' => 'WFP-0004', 'department' => 'ENG', 'position' => 'ENG-SE'],
         ];
 
         $active = EmploymentStatus::where('code', 'active')->first();
@@ -30,7 +32,7 @@ class EmployeeSeeder extends Seeder
                 [
                     'name' => $seed['name'],
                     'phone' => '+855 12 000 00'.$index,
-                    'password' => Hash::make('password'),
+                    'password' => Hash::make($password),
                     'email_verified_at' => now(),
                     'is_active' => true,
                 ],

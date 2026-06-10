@@ -127,4 +127,53 @@ class AuthService
     {
         return Password::sendResetLink(['email' => $email]);
     }
+
+    public function sendPasswordResetOtp(string $email): void
+    {
+        $user = User::where('email', $email)->first();
+        if (! $user) {
+            return; // silently fail — don't leak whether email exists
+        }
+
+        $code = (string) random_int(100000, 999999);
+
+        $user->emailOtps()->where('purpose', 'password_reset')->whereNull('used_at')->update(['used_at' => now()]);
+        $user->emailOtps()->create([
+            'purpose'    => 'password_reset',
+            'code_hash'  => Hash::make($code),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $user->notify(new EmailOtpNotification($code));
+    }
+
+    public function resetPasswordWithOtp(string $email, string $code, string $password): void
+    {
+        $user = User::where('email', $email)->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'email' => ['No account found with this email address.'],
+            ]);
+        }
+
+        $otp = EmailOtp::query()
+            ->where('user_id', $user->id)
+            ->where('purpose', 'password_reset')
+            ->whereNull('used_at')
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
+
+        if (! $otp || ! Hash::check($code, $otp->code_hash)) {
+            throw ValidationException::withMessages([
+                'code' => ['The verification code is invalid or expired.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($user, $otp, $password) {
+            $otp->update(['used_at' => now()]);
+            $user->forceFill(['password' => Hash::make($password)])->save();
+        });
+    }
 }

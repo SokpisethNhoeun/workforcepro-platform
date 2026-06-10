@@ -38,6 +38,8 @@ Route::prefix('v1')->group(function () {
         Route::post('login', [AuthController::class, 'login']);
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        Route::post('send-reset-otp', [AuthController::class, 'sendResetOtp']);
+        Route::post('reset-password-with-otp', [AuthController::class, 'resetPasswordWithOtp']);
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('me', [AuthController::class, 'me']);
