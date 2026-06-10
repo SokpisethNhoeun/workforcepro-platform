@@ -82,10 +82,8 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:18000
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:18000
+      API_BASE_URL: http://backend:8000
     ports:
       - "3001:3000"
     depends_on:

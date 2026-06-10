@@ -15,6 +15,10 @@ export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const isAuthed = !!request.cookies.get(AUTH_COOKIE_NAME)?.value
 
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next()
+  }
+
   if (PUBLIC_PATHS.has(pathname)) {
     if (isAuthed && pathname === "/login") {
       const url = request.nextUrl.clone()
