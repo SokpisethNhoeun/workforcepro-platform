@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-import { setTokenCookie } from "@/lib/auth/server-cookies"
+import { setTokenCookieOnResponse } from "@/lib/auth/server-cookies"
 
 export const dynamic = "force-dynamic"
 
@@ -29,16 +29,18 @@ export async function POST(request: NextRequest) {
   }
 
   const token = data.data?.access_token
-  if (token) {
-    await setTokenCookie(token, false)
-  }
-
   const responseData = { ...data.data }
   delete responseData.access_token
   delete responseData.token_type
 
-  return Response.json({
+  const nextResponse = NextResponse.json({
     ...data,
     data: responseData,
   })
+
+  if (token) {
+    setTokenCookieOnResponse(nextResponse, token, false)
+  }
+
+  return nextResponse
 }

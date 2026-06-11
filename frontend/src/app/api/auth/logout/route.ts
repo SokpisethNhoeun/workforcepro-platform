@@ -1,4 +1,6 @@
-import { clearTokenCookie, getTokenCookie } from "@/lib/auth/server-cookies"
+import { NextResponse } from "next/server"
+
+import { clearTokenCookieOnResponse, getTokenCookie } from "@/lib/auth/server-cookies"
 
 export const dynamic = "force-dynamic"
 
@@ -25,7 +27,8 @@ export async function POST() {
     }
   }
 
-  await clearTokenCookie()
+  const response = NextResponse.json({ success: true, message: "Logged out." })
+  clearTokenCookieOnResponse(response)
 
-  return Response.json({ success: true, message: "Logged out." })
+  return response
 }
