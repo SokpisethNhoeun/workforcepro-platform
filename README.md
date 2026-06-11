@@ -125,7 +125,7 @@ All modules ship end-to-end (Controller → Service → FormRequest → Resource
 
 ## 5. Frontend conventions
 
-- **API client:** `src/lib/api/client.ts`. Axios instance with `withCredentials: false`, base URL from `NEXT_PUBLIC_API_URL`.
+- **API client:** `src/lib/api/client.ts`. Axios instance with `withCredentials: false`; browser requests stay on same-origin `/api/v1/*` and the Next.js route handler forwards them with server-side `API_BASE_URL`.
   - `api` — axios instance
   - `sanitizePayload(values)` — strips `""`, `null`, `undefined` before POST/PUT so Laravel's `exists` / `date` / `email` rules don't reject empty strings. **Always call this on form payloads.**
   - `apiErrorMessage(err)` — flattens Laravel validation errors to a single string for toasts.
@@ -160,6 +160,7 @@ The provided compose file uses project-scoped container names and alternate host
 | Redis | 16379 |
 
 ```bash
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -197,10 +198,10 @@ SESSION_SAME_SITE=lax
 ```bash
 cd frontend
 npm install
-NEXT_PUBLIC_API_URL=http://localhost:18000 npm run dev -- --port 3001
+API_BASE_URL=http://localhost:18000 npm run dev -- --port 3001
 ```
 
-Open <http://localhost:3001>. Default seeded admin: `admin@workforcepro.test` / see `EmployeeSeeder` for the password.
+Open <http://localhost:3001>. Seeded login emails are listed in `backend/README.md`; the password comes from `SEED_USER_PASSWORD` in `backend/.env`.
 
 ---
 

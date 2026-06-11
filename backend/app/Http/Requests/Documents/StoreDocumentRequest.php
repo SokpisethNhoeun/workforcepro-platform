@@ -17,9 +17,7 @@ class StoreDocumentRequest extends FormRequest
             'employee_id' => ['required', 'exists:employees,id'],
             'type' => ['required', 'string', 'max:50'],
             'title' => ['required', 'string', 'max:255'],
-            'file_path' => ['required', 'string', 'max:500'],
-            'mime_type' => ['nullable', 'string', 'max:100'],
-            'size_bytes' => ['sometimes', 'integer', 'min:0'],
+            'file' => ['required', 'file', 'max:10240', 'mimes:pdf,doc,docx,jpg,jpeg,png,xlsx,csv'],
             'expires_at' => ['nullable', 'date'],
         ];
     }

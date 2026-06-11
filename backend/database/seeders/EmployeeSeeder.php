@@ -9,12 +9,17 @@ use App\Models\Position;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 class EmployeeSeeder extends Seeder
 {
     public function run(): void
     {
-        $password = 'Sethadmin@12';
+        $password = config('auth.seed_user_password');
+
+        if (! is_string($password) || $password === '') {
+            throw new RuntimeException('SEED_USER_PASSWORD must be configured before running EmployeeSeeder.');
+        }
 
         $users = [
             ['role' => 'Admin', 'name' => 'Workforce Admin', 'email' => 'ahboy5518@gmail.com', 'code' => 'WFP-0001', 'department' => 'HR', 'position' => 'HR-DIR'],

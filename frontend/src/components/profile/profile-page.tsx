@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { sileo } from "sileo"
 import { z } from "zod"
 
+import { TwoFactorSetup } from "@/components/profile/two-factor-setup"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { api, csrf } from "@/lib/api/client"
@@ -209,33 +210,37 @@ export function ProfilePage() {
           </form>
         </div>
 
-        <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="rounded-lg border bg-card p-6 shadow-sm h-fit">
-          <div className="mb-4 flex items-center gap-2">
-            <KeyRoundIcon className="size-4" />
-            <h3 className="text-sm font-semibold">Change Password</h3>
-          </div>
-          <div className="grid gap-3">
-            <label className="grid gap-1 text-sm">
-              <span className="text-xs font-medium text-muted-foreground">Current Password</span>
-              <Input type="password" {...passwordForm.register("current_password")} />
-              {passwordForm.formState.errors.current_password && <span className="text-xs text-destructive">{passwordForm.formState.errors.current_password.message}</span>}
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span className="text-xs font-medium text-muted-foreground">New Password</span>
-              <Input type="password" {...passwordForm.register("password")} />
-              {passwordForm.formState.errors.password && <span className="text-xs text-destructive">{passwordForm.formState.errors.password.message}</span>}
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span className="text-xs font-medium text-muted-foreground">Confirm Password</span>
-              <Input type="password" {...passwordForm.register("password_confirmation")} />
-              {passwordForm.formState.errors.password_confirmation && <span className="text-xs text-destructive">{passwordForm.formState.errors.password_confirmation.message}</span>}
-            </label>
-            <Button type="submit" className="mt-2">
+        <div className="space-y-4">
+          <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="rounded-lg border bg-card p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
               <KeyRoundIcon className="size-4" />
-              Update Password
-            </Button>
-          </div>
-        </form>
+              <h3 className="text-sm font-semibold">Change Password</h3>
+            </div>
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-sm">
+                <span className="text-xs font-medium text-muted-foreground">Current Password</span>
+                <Input type="password" {...passwordForm.register("current_password")} />
+                {passwordForm.formState.errors.current_password && <span className="text-xs text-destructive">{passwordForm.formState.errors.current_password.message}</span>}
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="text-xs font-medium text-muted-foreground">New Password</span>
+                <Input type="password" {...passwordForm.register("password")} />
+                {passwordForm.formState.errors.password && <span className="text-xs text-destructive">{passwordForm.formState.errors.password.message}</span>}
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="text-xs font-medium text-muted-foreground">Confirm Password</span>
+                <Input type="password" {...passwordForm.register("password_confirmation")} />
+                {passwordForm.formState.errors.password_confirmation && <span className="text-xs text-destructive">{passwordForm.formState.errors.password_confirmation.message}</span>}
+              </label>
+              <Button type="submit" className="mt-2">
+                <KeyRoundIcon className="size-4" />
+                Update Password
+              </Button>
+            </div>
+          </form>
+
+          <TwoFactorSetup />
+        </div>
       </section>
     </div>
   )

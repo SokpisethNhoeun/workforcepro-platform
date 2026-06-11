@@ -35,11 +35,15 @@ class TaskController extends Controller
 
     public function show(Task $task): JsonResponse
     {
+        $this->authorize('view', $task);
+
         return ApiResponse::success(new TaskResource($this->tasks->find($task->id)));
     }
 
     public function store(StoreTaskRequest $request): JsonResponse
     {
+        $this->authorize('create', Task::class);
+
         $data = $request->validated();
         $data['assigned_by'] = $request->user()->id;
 
@@ -48,6 +52,8 @@ class TaskController extends Controller
 
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
+        $this->authorize('update', $task);
+
         $task = $this->tasks->update($task, $request->validated());
 
         return ApiResponse::success(new TaskResource($task), 'Task updated.');
@@ -55,6 +61,8 @@ class TaskController extends Controller
 
     public function destroy(Task $task): JsonResponse
     {
+        $this->authorize('delete', $task);
+
         $this->tasks->delete($task);
 
         return ApiResponse::success(null, 'Task deleted.');

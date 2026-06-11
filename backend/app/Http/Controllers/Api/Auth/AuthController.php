@@ -8,12 +8,15 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Services\AuthService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
@@ -37,6 +40,16 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         $user = $this->authService->login($request->validated(), $request);
+
+        if ($user->hasTwoFactorEnabled()) {
+            $challengeToken = Str::random(64);
+            Cache::put("2fa_challenge:{$challengeToken}", $user->id, now()->addMinutes(10));
+
+            return ApiResponse::success([
+                'two_factor_required' => true,
+                'challenge_token' => $challengeToken,
+            ], 'Two-factor authentication required.');
+        }
 
         $data = [
             'user' => new UserResource($user),
@@ -149,5 +162,133 @@ class AuthController extends Controller
             new UserResource($request->user()->fresh()->load('roles', 'employee.department', 'employee.position')),
             'Profile updated.'
         );
+    }
+
+    // ──────────────────────────────────────────────
+    // Google OAuth
+    // ──────────────────────────────────────────────
+
+    public function googleRedirect(): JsonResponse
+    {
+        return ApiResponse::success([
+            'url' => $this->authService->getGoogleRedirectUrl(),
+        ]);
+    }
+
+    public function googleCallback(Request $request): JsonResponse
+    {
+        $request->validate(['code' => ['required', 'string']]);
+
+        $user = $this->authService->handleGoogleCallback();
+
+        if ($user->hasTwoFactorEnabled()) {
+            $challengeToken = Str::random(64);
+            Cache::put("2fa_challenge:{$challengeToken}", $user->id, now()->addMinutes(10));
+
+            return ApiResponse::success([
+                'two_factor_required' => true,
+                'challenge_token' => $challengeToken,
+            ], 'Two-factor authentication required.');
+        }
+
+        $data = [
+            'user' => new UserResource($user),
+            'access_token' => $user->createToken('workforcepro-api')->plainTextToken,
+            'token_type' => 'Bearer',
+        ];
+
+        return ApiResponse::success($data, 'Login successful.');
+    }
+
+    // ──────────────────────────────────────────────
+    // Two-Factor Authentication
+    // ──────────────────────────────────────────────
+
+    public function twoFactorChallenge(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'challenge_token' => ['required', 'string'],
+            'code' => ['required_without:recovery_code', 'nullable', 'string', 'size:6'],
+            'recovery_code' => ['required_without:code', 'nullable', 'string'],
+        ]);
+
+        $userId = Cache::pull("2fa_challenge:{$data['challenge_token']}");
+        if (! $userId) {
+            throw ValidationException::withMessages([
+                'challenge_token' => ['The challenge token is invalid or expired.'],
+            ]);
+        }
+
+        $user = User::findOrFail($userId);
+
+        $valid = false;
+        if (! empty($data['code'])) {
+            $valid = $this->authService->verifyTwoFactorCode($user, $data['code']);
+        } elseif (! empty($data['recovery_code'])) {
+            $valid = $this->authService->verifyRecoveryCode($user, $data['recovery_code']);
+        }
+
+        if (! $valid) {
+            throw ValidationException::withMessages([
+                'code' => ['The provided two-factor code is invalid.'],
+            ]);
+        }
+
+        return ApiResponse::success([
+            'user' => new UserResource($user->load('roles', 'employee.department', 'employee.position')),
+            'access_token' => $user->createToken('workforcepro-api')->plainTextToken,
+            'token_type' => 'Bearer',
+        ], 'Login successful.');
+    }
+
+    public function enableTwoFactor(Request $request): JsonResponse
+    {
+        $result = $this->authService->enableTwoFactor($request->user());
+
+        return ApiResponse::success($result, 'Two-factor authentication setup initiated. Scan the QR code and confirm.');
+    }
+
+    public function confirmTwoFactor(Request $request): JsonResponse
+    {
+        $request->validate(['code' => ['required', 'string', 'size:6']]);
+
+        $this->authService->confirmTwoFactor($request->user(), $request->input('code'));
+
+        return ApiResponse::success([
+            'recovery_codes' => $this->authService->getRecoveryCodes($request->user()),
+        ], 'Two-factor authentication confirmed.');
+    }
+
+    public function disableTwoFactor(Request $request): JsonResponse
+    {
+        $request->validate(['password' => ['required', 'string']]);
+
+        $this->authService->disableTwoFactor($request->user(), $request->input('password'));
+
+        return ApiResponse::success(null, 'Two-factor authentication disabled.');
+    }
+
+    public function twoFactorRecoveryCodes(Request $request): JsonResponse
+    {
+        return ApiResponse::success([
+            'recovery_codes' => $this->authService->getRecoveryCodes($request->user()),
+        ]);
+    }
+
+    public function regenerateRecoveryCodes(Request $request): JsonResponse
+    {
+        return ApiResponse::success([
+            'recovery_codes' => $this->authService->regenerateRecoveryCodes($request->user()),
+        ], 'Recovery codes regenerated.');
+    }
+
+    public function twoFactorStatus(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return ApiResponse::success([
+            'enabled' => $user->hasTwoFactorEnabled(),
+            'confirmed' => $user->two_factor_confirmed_at !== null,
+        ]);
     }
 }

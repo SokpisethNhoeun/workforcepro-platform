@@ -30,12 +30,12 @@ export default function ForgotPasswordPage() {
 
   async function onSubmit(values: ForgotForm) {
     try {
-      await api.post("/api/v1/auth/send-reset-otp", { email: values.email })
+      await api.post("/api/v1/auth/forgot-password", { email: values.email })
       sileo.success({
-        title: "Reset code sent",
-        description: "Check your inbox for the 6-digit code.",
+        title: "Reset link sent",
+        description: "Check your inbox for a password reset link.",
       })
-      router.push(`/reset-password?email=${encodeURIComponent(values.email)}`)
+      router.push(`/reset-password?email=${encodeURIComponent(values.email)}&method=link`)
     } catch (error) {
       sileo.error({
         title: "Request failed",
@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthCard
       title="Forgot password?"
-      description="Enter your email and we'll send you a reset code"
+      description="Enter your email and we'll send you a reset link"
       icon={<KeyRoundIcon className="size-4" />}
     >
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
           fullWidth
           className="mt-2"
         >
-          {form.formState.isSubmitting ? "Sending code…" : "Send reset code"}
+          {form.formState.isSubmitting ? "Sending link..." : "Send reset link"}
         </Button>
       </form>
 

@@ -18,7 +18,17 @@ import { api, apiErrorMessage } from "@/lib/api/client"
 
 const RESEND_COOLDOWN = 60
 
-const schema = z
+const tokenSchema = z
+  .object({
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    password_confirmation: z.string(),
+  })
+  .refine((data) => data.password === data.password_confirmation, {
+    message: "Passwords don't match",
+    path: ["password_confirmation"],
+  })
+
+const otpSchema = z
   .object({
     code: z.string().length(6, "Enter all 6 digits"),
     password: z.string().min(8, "Password must be at least 8 characters"),
@@ -29,13 +39,125 @@ const schema = z
     path: ["password_confirmation"],
   })
 
-type ResetForm = z.infer<typeof schema>
+type TokenResetForm = z.infer<typeof tokenSchema>
+type OtpResetForm = z.infer<typeof otpSchema>
 
-function ResetPasswordInner() {
+function TokenResetView({ email, token }: { email: string; token: string }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const email = searchParams.get("email") ?? ""
+  const [showPassword, setShowPassword] = React.useState(false)
+  const [showConfirm, setShowConfirm] = React.useState(false)
 
+  const form = useForm<TokenResetForm>({
+    resolver: zodResolver(tokenSchema),
+    defaultValues: { password: "", password_confirmation: "" },
+  })
+
+  async function onSubmit(values: TokenResetForm) {
+    try {
+      await api.post("/api/v1/auth/reset-password", {
+        token,
+        email,
+        password: values.password,
+        password_confirmation: values.password_confirmation,
+      })
+      sileo.success({
+        title: "Password reset",
+        description: "You can now sign in with your new password.",
+      })
+      router.push("/login")
+    } catch (error) {
+      sileo.error({
+        title: "Reset failed",
+        description: apiErrorMessage(error, "The link may have expired. Try again."),
+      })
+    }
+  }
+
+  return (
+    <AuthCard
+      title="Reset password"
+      description={`Set a new password for ${email}`}
+      icon={<LockKeyholeIcon className="size-4" />}
+    >
+      <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-foreground" htmlFor="password">
+            New password
+          </label>
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              autoFocus
+              className="pr-10"
+              {...form.register("password")}
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+            </button>
+          </div>
+          {form.formState.errors.password && (
+            <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-foreground" htmlFor="confirm">
+            Confirm new password
+          </label>
+          <div className="relative">
+            <Input
+              id="confirm"
+              type={showConfirm ? "text" : "password"}
+              placeholder="Repeat your new password"
+              autoComplete="new-password"
+              className="pr-10"
+              {...form.register("password_confirmation")}
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => setShowConfirm((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showConfirm ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+            </button>
+          </div>
+          {form.formState.errors.password_confirmation && (
+            <p className="text-xs text-destructive">
+              {form.formState.errors.password_confirmation.message}
+            </p>
+          )}
+        </div>
+
+        <Button
+          type="submit"
+          variant="primary"
+          isDisabled={form.formState.isSubmitting}
+          fullWidth
+        >
+          {form.formState.isSubmitting ? "Resetting..." : "Reset password"}
+        </Button>
+      </form>
+
+      <p className="text-center text-sm text-muted-foreground">
+        <Link href="/login" className="text-primary font-medium hover:underline underline-offset-4">
+          Back to sign in
+        </Link>
+      </p>
+    </AuthCard>
+  )
+}
+
+function OtpResetView({ email }: { email: string }) {
+  const router = useRouter()
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirm, setShowConfirm] = React.useState(false)
   const [resending, setResending] = React.useState(false)
@@ -47,12 +169,12 @@ function ResetPasswordInner() {
     return () => clearTimeout(t)
   }, [cooldown])
 
-  const form = useForm<ResetForm>({
-    resolver: zodResolver(schema),
+  const form = useForm<OtpResetForm>({
+    resolver: zodResolver(otpSchema),
     defaultValues: { code: "", password: "", password_confirmation: "" },
   })
 
-  async function onSubmit(values: ResetForm) {
+  async function onSubmit(values: OtpResetForm) {
     try {
       await api.post("/api/v1/auth/reset-password-with-otp", {
         email,
@@ -89,24 +211,6 @@ function ResetPasswordInner() {
     } finally {
       setResending(false)
     }
-  }
-
-  if (!email) {
-    return (
-      <AuthCard
-        title="Reset password"
-        icon={<LockKeyholeIcon className="size-4" />}
-      >
-        <div className="text-center space-y-4">
-          <p className="text-sm text-muted-foreground">
-            No email address provided.{" "}
-            <Link href="/forgot-password" className="text-primary hover:underline underline-offset-4">
-              Go back
-            </Link>
-          </p>
-        </div>
-      </AuthCard>
-    )
   }
 
   return (
@@ -195,7 +299,7 @@ function ResetPasswordInner() {
           isDisabled={form.formState.isSubmitting}
           fullWidth
         >
-          {form.formState.isSubmitting ? "Resetting…" : "Reset password"}
+          {form.formState.isSubmitting ? "Resetting..." : "Reset password"}
         </Button>
       </form>
 
@@ -211,7 +315,7 @@ function ResetPasswordInner() {
               disabled={resending}
               className="text-primary font-medium hover:underline underline-offset-4 disabled:opacity-50"
             >
-              {resending ? "Sending…" : "Resend code"}
+              {resending ? "Sending..." : "Resend code"}
             </button>
           )}
         </p>
@@ -223,6 +327,33 @@ function ResetPasswordInner() {
       </div>
     </AuthCard>
   )
+}
+
+function ResetPasswordInner() {
+  const searchParams = useSearchParams()
+  const email = searchParams.get("email") ?? ""
+  const token = searchParams.get("token")
+
+  if (!email && !token) {
+    return (
+      <AuthCard title="Reset password" icon={<LockKeyholeIcon className="size-4" />}>
+        <div className="text-center space-y-4">
+          <p className="text-sm text-muted-foreground">
+            No email address provided.{" "}
+            <Link href="/forgot-password" className="text-primary hover:underline underline-offset-4">
+              Go back
+            </Link>
+          </p>
+        </div>
+      </AuthCard>
+    )
+  }
+
+  if (token && email) {
+    return <TokenResetView email={email} token={token} />
+  }
+
+  return <OtpResetView email={email} />
 }
 
 export default function ResetPasswordPage() {

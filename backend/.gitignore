@@ -19,6 +19,7 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/framework/docker-entrypoint.lock
 /storage/pail
 /vendor
 _ide_helper.php

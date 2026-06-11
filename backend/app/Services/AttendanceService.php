@@ -3,16 +3,33 @@
 namespace App\Services;
 
 use App\Models\Attendance;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 
 class AttendanceService
 {
-    public function paginate(array $filters): LengthAwarePaginator
+    public function paginate(array $filters, ?User $user = null): LengthAwarePaginator
     {
         $query = Attendance::query()
-            ->with(['employee.department', 'employee.position'])
-            ->when($filters['employee_id'] ?? null, fn ($q, $id) => $q->where('employee_id', $id))
+            ->with(['employee.department', 'employee.position']);
+
+        if ($user && ! $user->hasAnyRole(['Admin', 'HR'])) {
+            if ($user->hasRole('Manager')) {
+                $deptIds = $user->employee?->managedDepartmentIds() ?? [];
+                $employeeId = $user->employee?->id;
+                $query->where(function ($q) use ($deptIds, $employeeId) {
+                    $q->whereHas('employee', fn ($e) => $e->whereIn('department_id', $deptIds));
+                    if ($employeeId) {
+                        $q->orWhere('employee_id', $employeeId);
+                    }
+                });
+            } else {
+                $query->where('employee_id', $user->employee?->id);
+            }
+        }
+
+        $query->when($filters['employee_id'] ?? null, fn ($q, $id) => $q->where('employee_id', $id))
             ->when($filters['date'] ?? null, fn ($q, $date) => $q->whereDate('date', $date))
             ->when($filters['date_from'] ?? null, fn ($q, $date) => $q->whereDate('date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($q, $date) => $q->whereDate('date', '<=', $date))

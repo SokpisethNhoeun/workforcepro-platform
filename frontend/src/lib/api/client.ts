@@ -2,8 +2,6 @@ import axios, { AxiosError, type AxiosResponse } from "axios"
 
 import { clearAuthCookie } from "@/lib/auth/cookie"
 
-const AUTH_TOKEN_KEY = "workforcepro.auth_token"
-
 type ApiErrorPayload = {
   message?: string
   errors?: Record<string, string[]>
@@ -17,40 +15,16 @@ export type ApiEnvelope<T> = {
 }
 
 export const api = axios.create({
-  withCredentials: false,
+  withCredentials: true,
   headers: {
     Accept: "application/json",
   },
 })
 
-export function getStoredToken() {
-  if (typeof window === "undefined") return null
-  return window.localStorage.getItem(AUTH_TOKEN_KEY)
-}
-
-export function setAuthToken(token: string | null) {
-  if (typeof window !== "undefined") {
-    if (token) {
-      window.localStorage.setItem(AUTH_TOKEN_KEY, token)
-    } else {
-      window.localStorage.removeItem(AUTH_TOKEN_KEY)
-    }
-  }
-
-  if (token) {
-    api.defaults.headers.common.Authorization = `Bearer ${token}`
-  } else {
-    delete api.defaults.headers.common.Authorization
-  }
-}
-
-setAuthToken(getStoredToken())
-
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiErrorPayload>) => {
     if (error.response?.status === 401) {
-      setAuthToken(null)
       clearAuthCookie()
       if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
         window.location.assign("/login")
@@ -62,8 +36,7 @@ api.interceptors.response.use(
 )
 
 export async function csrf() {
-  // API is Bearer-token authenticated and is NOT a Sanctum stateful domain.
-  // No CSRF token is needed; this is a no-op kept for call-site compatibility.
+  // No-op: auth token is managed server-side via HttpOnly cookie.
 }
 
 export function apiData<T>(response: AxiosResponse<ApiEnvelope<T>>) {

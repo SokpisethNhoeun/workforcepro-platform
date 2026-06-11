@@ -35,16 +35,22 @@ class AssetController extends Controller
 
     public function show(Asset $asset): JsonResponse
     {
+        $this->authorize('view', $asset);
+
         return ApiResponse::success(new AssetResource($this->assets->find($asset->id)));
     }
 
     public function store(StoreAssetRequest $request): JsonResponse
     {
+        $this->authorize('create', Asset::class);
+
         return ApiResponse::success(new AssetResource($this->assets->create($request->validated())), 'Asset created.', 201);
     }
 
     public function update(UpdateAssetRequest $request, Asset $asset): JsonResponse
     {
+        $this->authorize('update', $asset);
+
         $asset = $this->assets->update($asset, $request->validated());
 
         return ApiResponse::success(new AssetResource($asset), 'Asset updated.');
@@ -52,6 +58,8 @@ class AssetController extends Controller
 
     public function destroy(Asset $asset): JsonResponse
     {
+        $this->authorize('delete', $asset);
+
         $this->assets->delete($asset);
 
         return ApiResponse::success(null, 'Asset deleted.');

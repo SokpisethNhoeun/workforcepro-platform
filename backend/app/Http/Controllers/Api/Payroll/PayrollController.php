@@ -35,11 +35,15 @@ class PayrollController extends Controller
 
     public function show(PayrollRun $payrollRun): JsonResponse
     {
+        $this->authorize('view', $payrollRun);
+
         return ApiResponse::success($payrollRun->load('payslips.employee'));
     }
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', PayrollRun::class);
+
         $data = $request->validate([
             'period' => ['required', 'string', 'max:20', 'unique:payroll_runs,period'],
             'run_date' => ['required', 'date'],
@@ -52,6 +56,7 @@ class PayrollController extends Controller
 
     public function update(Request $request, PayrollRun $payrollRun): JsonResponse
     {
+        $this->authorize('update', $payrollRun);
         $data = $request->validate([
             'status' => ['sometimes', Rule::in(['draft', 'processing', 'completed', 'cancelled'])],
             'notes' => ['nullable', 'string'],
@@ -68,6 +73,8 @@ class PayrollController extends Controller
 
     public function process(PayrollRun $payrollRun): JsonResponse
     {
+        $this->authorize('process', $payrollRun);
+
         try {
             $this->payrollService->processPayroll($payrollRun);
             return ApiResponse::success($payrollRun->fresh()->load('payslips.employee'), 'Payroll processed successfully.');
@@ -78,6 +85,8 @@ class PayrollController extends Controller
 
     public function destroy(PayrollRun $payrollRun): JsonResponse
     {
+        $this->authorize('delete', $payrollRun);
+
         $payrollRun->delete();
 
         return ApiResponse::success(null, 'Payroll run deleted.');

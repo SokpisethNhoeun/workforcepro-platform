@@ -42,6 +42,8 @@ class LeaveRequestController extends Controller
 
     public function show(LeaveRequest $leaveRequest): JsonResponse
     {
+        $this->authorize('view', $leaveRequest);
+
         return ApiResponse::success(new LeaveRequestResource($this->leaves->find($leaveRequest->id)));
     }
 
@@ -54,6 +56,8 @@ class LeaveRequestController extends Controller
 
     public function approve(Request $request, LeaveRequest $leaveRequest): JsonResponse
     {
+        $this->authorize('approve', $leaveRequest);
+
         $leaveRequest = $this->leaves->approve($leaveRequest, $request->user()->id);
 
         return ApiResponse::success(new LeaveRequestResource($leaveRequest), 'Leave request approved.');
@@ -61,6 +65,8 @@ class LeaveRequestController extends Controller
 
     public function reject(Request $request, LeaveRequest $leaveRequest): JsonResponse
     {
+        $this->authorize('approve', $leaveRequest);
+
         $request->validate(['rejection_reason' => ['nullable', 'string', 'max:500']]);
 
         $leaveRequest = $this->leaves->reject(
@@ -74,6 +80,8 @@ class LeaveRequestController extends Controller
 
     public function destroy(LeaveRequest $leaveRequest): JsonResponse
     {
+        $this->authorize('delete', $leaveRequest);
+
         $this->leaves->delete($leaveRequest);
 
         return ApiResponse::success(null, 'Leave request deleted.');

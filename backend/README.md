@@ -16,6 +16,7 @@ Laravel API for the WorkforcePro HR platform.
 From the repository root, Docker Compose is the recommended path:
 
 ```bash
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -40,6 +41,7 @@ FRONTEND_URL=http://localhost:3001
 DB_CONNECTION=pgsql
 SANCTUM_STATEFUL_DOMAINS=
 CORS_ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+SEED_USER_PASSWORD=change-this-seed-password
 ```
 
 `SANCTUM_STATEFUL_DOMAINS` should stay empty because this API uses bearer tokens, not Sanctum cookie sessions.
@@ -55,14 +57,15 @@ vendor/bin/pint
 
 ## Seeded Login Accounts
 
-Run `php artisan migrate:fresh --seed` to recreate the database with these role accounts:
+Run `php artisan migrate:fresh --seed` to recreate the database with these role accounts.
+All seeded users use the password from `SEED_USER_PASSWORD` in `backend/.env`.
 
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin | `ahboy5518@gmail.com` | `Sethadmin@12` |
-| HR | `ahboy5519@gmail.com` | `Sethadmin@12` |
-| Manager | `ahboy1819@gmail.com` | `Sethadmin@12` |
-| Employee | `sokpisethnhom09631@gmail.com` | `Sethadmin@12` |
+| Role | Email |
+| --- | --- |
+| Admin | `ahboy5518@gmail.com` |
+| HR | `ahboy5519@gmail.com` |
+| Manager | `ahboy1819@gmail.com` |
+| Employee | `sokpisethnhom09631@gmail.com` |
 
 ## Swagger UI
 

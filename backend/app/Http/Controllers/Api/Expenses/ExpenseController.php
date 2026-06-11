@@ -34,6 +34,8 @@ class ExpenseController extends Controller
 
     public function show(Expense $expense): JsonResponse
     {
+        $this->authorize('view', $expense);
+
         return ApiResponse::success(new ExpenseResource($this->expenses->find($expense->id)));
     }
 
@@ -44,6 +46,8 @@ class ExpenseController extends Controller
 
     public function approve(Request $request, Expense $expense): JsonResponse
     {
+        $this->authorize('approve', $expense);
+
         $expense = $this->expenses->approve($expense, $request->user()->id);
 
         return ApiResponse::success(new ExpenseResource($expense), 'Expense approved.');
@@ -51,6 +55,8 @@ class ExpenseController extends Controller
 
     public function reject(Request $request, Expense $expense): JsonResponse
     {
+        $this->authorize('approve', $expense);
+
         $expense = $this->expenses->reject($expense, $request->user()->id);
 
         return ApiResponse::success(new ExpenseResource($expense), 'Expense rejected.');
@@ -58,6 +64,8 @@ class ExpenseController extends Controller
 
     public function destroy(Expense $expense): JsonResponse
     {
+        $this->authorize('delete', $expense);
+
         $this->expenses->delete($expense);
 
         return ApiResponse::success(null, 'Expense deleted.');

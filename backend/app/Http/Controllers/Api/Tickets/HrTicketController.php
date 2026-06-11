@@ -35,6 +35,8 @@ class HrTicketController extends Controller
 
     public function show(HrTicket $hrTicket): JsonResponse
     {
+        $this->authorize('view', $hrTicket);
+
         return ApiResponse::success(new HrTicketResource($this->tickets->find($hrTicket->id)));
     }
 
@@ -45,6 +47,8 @@ class HrTicketController extends Controller
 
     public function update(UpdateTicketRequest $request, HrTicket $hrTicket): JsonResponse
     {
+        $this->authorize('update', $hrTicket);
+
         $ticket = $this->tickets->update($hrTicket, $request->validated());
 
         return ApiResponse::success(new HrTicketResource($ticket), 'Ticket updated.');
@@ -52,6 +56,8 @@ class HrTicketController extends Controller
 
     public function destroy(HrTicket $hrTicket): JsonResponse
     {
+        $this->authorize('delete', $hrTicket);
+
         $this->tickets->delete($hrTicket);
 
         return ApiResponse::success(null, 'Ticket deleted.');

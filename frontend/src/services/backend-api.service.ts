@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server"
 
+import { getTokenCookie } from "@/lib/auth/server-cookies"
+
 type BackendProxyContext = {
   params: Promise<{ path: string[] }>
 }
@@ -21,7 +23,6 @@ const HOP_BY_HOP_HEADERS = new Set([
 const FORWARDED_REQUEST_HEADERS = new Set([
   "accept",
   "accept-language",
-  "authorization",
   "content-type",
   "ngrok-skip-browser-warning",
   "x-requested-with",
@@ -53,7 +54,7 @@ function createBackendUrl(baseUrl: string, path: string[], request: NextRequest)
   return url
 }
 
-function forwardedRequestHeaders(request: NextRequest) {
+async function forwardedRequestHeaders(request: NextRequest) {
   const headers = new Headers()
 
   request.headers.forEach((value, key) => {
@@ -64,6 +65,11 @@ function forwardedRequestHeaders(request: NextRequest) {
   })
 
   headers.set("ngrok-skip-browser-warning", "true")
+
+  const token = await getTokenCookie()
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`)
+  }
 
   return headers
 }
@@ -98,7 +104,7 @@ export async function forwardBackendApiRequest(request: NextRequest, context: Ba
   try {
     const response = await fetch(targetUrl, {
       method: request.method,
-      headers: forwardedRequestHeaders(request),
+      headers: await forwardedRequestHeaders(request),
       body: await requestBody(request),
       cache: "no-store",
     })

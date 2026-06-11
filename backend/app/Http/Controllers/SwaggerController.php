@@ -471,8 +471,8 @@ class SwaggerController extends Controller
                         'name' => ['type' => 'string', 'example' => 'New Employee'],
                         'email' => ['type' => 'string', 'format' => 'email', 'example' => 'employee@example.com'],
                         'phone' => ['type' => 'string', 'nullable' => true, 'example' => '+855 12 345 678'],
-                        'password' => ['type' => 'string', 'format' => 'password', 'example' => 'Sethadmin@12'],
-                        'password_confirmation' => ['type' => 'string', 'format' => 'password', 'example' => 'Sethadmin@12'],
+                        'password' => ['type' => 'string', 'format' => 'password', 'example' => 'ExamplePass@123'],
+                        'password_confirmation' => ['type' => 'string', 'format' => 'password', 'example' => 'ExamplePass@123'],
                     ],
                 ],
                 'LoginRequest' => [
@@ -480,7 +480,7 @@ class SwaggerController extends Controller
                     'required' => ['email', 'password'],
                     'properties' => [
                         'email' => ['type' => 'string', 'format' => 'email', 'example' => 'ahboy5518@gmail.com'],
-                        'password' => ['type' => 'string', 'format' => 'password', 'example' => 'Sethadmin@12'],
+                        'password' => ['type' => 'string', 'format' => 'password', 'example' => 'your-seed-password'],
                         'remember' => ['type' => 'boolean', 'example' => false],
                     ],
                 ],
@@ -497,8 +497,8 @@ class SwaggerController extends Controller
                     'properties' => [
                         'token' => ['type' => 'string', 'example' => 'reset-token-from-email'],
                         'email' => ['type' => 'string', 'format' => 'email', 'example' => 'ahboy5518@gmail.com'],
-                        'password' => ['type' => 'string', 'format' => 'password', 'example' => 'Sethadmin@12'],
-                        'password_confirmation' => ['type' => 'string', 'format' => 'password', 'example' => 'Sethadmin@12'],
+                        'password' => ['type' => 'string', 'format' => 'password', 'example' => 'ExamplePass@123'],
+                        'password_confirmation' => ['type' => 'string', 'format' => 'password', 'example' => 'ExamplePass@123'],
                     ],
                 ],
                 'VerifyOtpRequest' => [
@@ -512,7 +512,7 @@ class SwaggerController extends Controller
                     'type' => 'object',
                     'required' => ['current_password', 'password', 'password_confirmation'],
                     'properties' => [
-                        'current_password' => ['type' => 'string', 'format' => 'password', 'example' => 'Sethadmin@12'],
+                        'current_password' => ['type' => 'string', 'format' => 'password', 'example' => 'your-current-password'],
                         'password' => ['type' => 'string', 'format' => 'password', 'example' => 'Newpass@12'],
                         'password_confirmation' => ['type' => 'string', 'format' => 'password', 'example' => 'Newpass@12'],
                     ],

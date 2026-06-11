@@ -11,7 +11,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Socialite\Facades\Socialite;
+use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\Models\Role;
 
 class AuthService
@@ -175,5 +178,153 @@ class AuthService
             $otp->update(['used_at' => now()]);
             $user->forceFill(['password' => Hash::make($password)])->save();
         });
+    }
+
+    // ──────────────────────────────────────────────
+    // Google OAuth
+    // ──────────────────────────────────────────────
+
+    public function getGoogleRedirectUrl(): string
+    {
+        return Socialite::driver('google')
+            ->stateless()
+            ->redirect()
+            ->getTargetUrl();
+    }
+
+    public function handleGoogleCallback(): User
+    {
+        $googleUser = Socialite::driver('google')
+            ->stateless()
+            ->user();
+
+        return DB::transaction(function () use ($googleUser) {
+            $user = User::where('google_id', $googleUser->getId())
+                ->orWhere('email', $googleUser->getEmail())
+                ->first();
+
+            if ($user) {
+                $user->update([
+                    'google_id' => $googleUser->getId(),
+                    'avatar_url' => $googleUser->getAvatar(),
+                ]);
+            } else {
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'google_id' => $googleUser->getId(),
+                    'avatar_url' => $googleUser->getAvatar(),
+                    'password' => Hash::make(Str::random(32)),
+                    'email_verified_at' => now(),
+                ]);
+
+                if (method_exists($user, 'assignRole') && Role::where('name', 'Employee')->exists()) {
+                    $user->assignRole('Employee');
+                }
+            }
+
+            $user->forceFill(['last_login_at' => now()])->save();
+
+            return $user->load('roles', 'employee.department', 'employee.position');
+        });
+    }
+
+    // ──────────────────────────────────────────────
+    // Two-Factor Authentication (TOTP)
+    // ──────────────────────────────────────────────
+
+    public function enableTwoFactor(User $user): array
+    {
+        $google2fa = new Google2FA();
+        $secret = $google2fa->generateSecretKey();
+
+        $user->forceFill([
+            'two_factor_secret' => $secret,
+            'two_factor_confirmed_at' => null,
+            'two_factor_recovery_codes' => $this->generateRecoveryCodes(),
+        ])->save();
+
+        $qrCodeUrl = $google2fa->getQRCodeUrl(
+            config('app.name'),
+            $user->email,
+            $secret
+        );
+
+        return [
+            'secret' => $secret,
+            'qr_code_url' => $qrCodeUrl,
+        ];
+    }
+
+    public function confirmTwoFactor(User $user, string $code): void
+    {
+        if (! $user->two_factor_secret) {
+            throw ValidationException::withMessages([
+                'code' => ['Two-factor authentication has not been enabled.'],
+            ]);
+        }
+
+        if (! $this->verifyTwoFactorCode($user, $code)) {
+            throw ValidationException::withMessages([
+                'code' => ['The provided two-factor code is invalid.'],
+            ]);
+        }
+
+        $user->forceFill(['two_factor_confirmed_at' => now()])->save();
+    }
+
+    public function disableTwoFactor(User $user, string $password): void
+    {
+        if (! Hash::check($password, $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => ['The provided password is incorrect.'],
+            ]);
+        }
+
+        $user->forceFill([
+            'two_factor_secret' => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
+        ])->save();
+    }
+
+    public function verifyTwoFactorCode(User $user, string $code): bool
+    {
+        $google2fa = new Google2FA();
+
+        return $google2fa->verifyKey($user->two_factor_secret, $code);
+    }
+
+    public function verifyRecoveryCode(User $user, string $code): bool
+    {
+        $codes = $user->two_factor_recovery_codes ?? [];
+        $index = array_search($code, $codes, true);
+
+        if ($index === false) {
+            return false;
+        }
+
+        unset($codes[$index]);
+        $user->forceFill(['two_factor_recovery_codes' => array_values($codes)])->save();
+
+        return true;
+    }
+
+    public function getRecoveryCodes(User $user): array
+    {
+        return $user->two_factor_recovery_codes ?? [];
+    }
+
+    public function regenerateRecoveryCodes(User $user): array
+    {
+        $codes = $this->generateRecoveryCodes();
+        $user->forceFill(['two_factor_recovery_codes' => $codes])->save();
+
+        return $codes;
+    }
+
+    private function generateRecoveryCodes(): array
+    {
+        return array_map(fn () => Str::random(10) . '-' . Str::random(10), range(1, 8));
     }
 }

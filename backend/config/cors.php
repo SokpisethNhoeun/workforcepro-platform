@@ -7,21 +7,19 @@ return [
 
     'allowed_origins' => array_filter(array_map(
         'trim',
-        explode(',', env(
-            'CORS_ALLOWED_ORIGINS',
-            'http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001'
-        ))
+        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001'))
     )),
 
-    'allowed_origins_patterns' => [
-        '/^https:\/\/.*\.vercel\.app$/',
-    ],
+    'allowed_origins_patterns' => array_filter(array_map(
+        'trim',
+        explode(',', env('CORS_ALLOWED_PATTERNS', ''))
+    )),
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['Retry-After'],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 ];

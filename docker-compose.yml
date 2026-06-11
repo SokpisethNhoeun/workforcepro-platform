@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: workforcepro
-      POSTGRES_USER: workforcepro
-      POSTGRES_PASSWORD: workforcepro
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
-      - "15432:5432"
+      - "${POSTGRES_PORT:-15432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U workforcepro -d workforcepro"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -18,7 +18,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "16379:6379"
+      - "${REDIS_PORT:-16379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -31,13 +31,18 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DB_HOST: postgres
-      REDIS_HOST: redis
-      APP_URL: http://localhost:18000
-      FRONTEND_URL: http://localhost:3001
-      SANCTUM_STATEFUL_DOMAINS:
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      APP_URL: ${APP_URL:?Set APP_URL in .env}
+      FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL in .env}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3001/login}
+      SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-}
     ports:
-      - "18000:8000"
+      - "${BACKEND_PORT:-18000}:8000"
     volumes:
       - ./backend:/var/www/html
       - backend-vendor:/var/www/html/vendor
@@ -53,8 +58,12 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DB_HOST: postgres
-      REDIS_HOST: redis
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      REDIS_HOST: ${REDIS_HOST:-redis}
     command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--timeout=120"]
     volumes:
       - ./backend:/var/www/html
@@ -69,8 +78,12 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DB_HOST: postgres
-      REDIS_HOST: redis
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      REDIS_HOST: ${REDIS_HOST:-redis}
     command: ["php", "artisan", "schedule:work"]
     volumes:
       - ./backend:/var/www/html
@@ -83,9 +96,9 @@ services:
     build:
       context: ./frontend
     environment:
-      API_BASE_URL: http://backend:8000
+      API_BASE_URL: ${API_BASE_URL:-http://backend:8000}
     ports:
-      - "3001:3000"
+      - "${FRONTEND_PORT:-3001}:3000"
     depends_on:
       backend:
         condition: service_started

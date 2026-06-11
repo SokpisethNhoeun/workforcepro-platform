@@ -34,6 +34,8 @@ class NotificationController extends Controller
 
     public function markAsRead(Notification $notification): JsonResponse
     {
+        $this->authorize('update', $notification);
+
         return ApiResponse::success(
             new NotificationResource($this->notifications->markAsRead($notification)),
             'Notification marked as read.'
@@ -49,6 +51,8 @@ class NotificationController extends Controller
 
     public function destroy(Notification $notification): JsonResponse
     {
+        $this->authorize('delete', $notification);
+
         $this->notifications->delete($notification);
 
         return ApiResponse::success(null, 'Notification deleted.');

@@ -3,16 +3,33 @@
 namespace App\Services;
 
 use App\Models\LeaveRequest;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 
 class LeaveService
 {
-    public function paginate(array $filters): LengthAwarePaginator
+    public function paginate(array $filters, ?User $user = null): LengthAwarePaginator
     {
         $query = LeaveRequest::query()
-            ->with(['employee.department', 'leaveType', 'approver'])
-            ->when($filters['employee_id'] ?? null, fn ($q, $id) => $q->where('employee_id', $id))
+            ->with(['employee.department', 'leaveType', 'approver']);
+
+        if ($user && ! $user->hasAnyRole(['Admin', 'HR'])) {
+            if ($user->hasRole('Manager')) {
+                $deptIds = $user->employee?->managedDepartmentIds() ?? [];
+                $employeeId = $user->employee?->id;
+                $query->where(function ($q) use ($deptIds, $employeeId) {
+                    $q->whereHas('employee', fn ($e) => $e->whereIn('department_id', $deptIds));
+                    if ($employeeId) {
+                        $q->orWhere('employee_id', $employeeId);
+                    }
+                });
+            } else {
+                $query->where('employee_id', $user->employee?->id);
+            }
+        }
+
+        $query->when($filters['employee_id'] ?? null, fn ($q, $id) => $q->where('employee_id', $id))
             ->when($filters['leave_type_id'] ?? null, fn ($q, $id) => $q->where('leave_type_id', $id))
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->when($filters['search'] ?? null, function ($q, string $search) {

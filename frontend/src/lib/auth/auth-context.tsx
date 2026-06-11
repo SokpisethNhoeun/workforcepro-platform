@@ -3,17 +3,17 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 
-import { api, apiData, csrf, getStoredToken, setAuthToken } from "@/lib/api/client"
+import { api, apiData } from "@/lib/api/client"
 import { clearAuthCookie, getAuthCookie, setAuthCookie } from "@/lib/auth/cookie"
-import type { AuthContextValue, AuthUser } from "@/lib/auth/types"
+import type { AuthContextValue, AuthUser, TwoFactorChallenge } from "@/lib/auth/types"
 
 const AuthContext = React.createContext<AuthContextValue | null>(null)
 
-type LoginResponse = {
+type RegisterResponse = {
   user: AuthUser
-  access_token?: string
-  token_type?: string
 }
+
+type LoginResponse = RegisterResponse | TwoFactorChallenge
 
 function toArray(value: string | string[]): string[] {
   return Array.isArray(value) ? value : [value]
@@ -34,8 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let cancelled = false
     async function boot() {
-      // If we don't have a token or an auth cookie hint, we assume guest
-      if (!getStoredToken() && !getAuthCookie()) {
+      if (!getAuthCookie()) {
         if (!cancelled) {
           setUser(null)
           setIsLoading(false)
@@ -47,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await fetchMe()
       } catch {
         if (!cancelled) {
-          setAuthToken(null)
           clearAuthCookie()
           setUser(null)
         }
@@ -63,20 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = React.useCallback<AuthContextValue["register"]>(
     async (name, email, password, phone) => {
-      await csrf()
-      const response = await api.post("/api/v1/auth/register", {
+      const response = await api.post("/api/auth/register", {
         name,
         email,
         password,
         password_confirmation: password,
         phone: phone ?? undefined,
       })
-      const data = apiData<LoginResponse>(response)
+      const data = apiData<RegisterResponse>(response)
 
-      setAuthCookie(data.access_token ?? "1", false)
-      if (data.access_token) {
-        setAuthToken(data.access_token)
-      }
+      setAuthCookie("1", false)
       setUser(data.user)
       return data.user
     },
@@ -85,16 +79,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = React.useCallback<AuthContextValue["login"]>(
     async (email, password, remember = true) => {
-      await csrf()
-      const response = await api.post("/api/v1/auth/login", { email, password, remember })
+      const response = await api.post("/api/auth/login", { email, password, remember })
       const data = apiData<LoginResponse>(response)
 
-      // Always set the auth cookie if login is successful to inform the middleware
-      setAuthCookie(data.access_token ?? "1", remember)
-
-      if (data.access_token) {
-        setAuthToken(data.access_token)
+      if ("two_factor_required" in data) {
+        return data as TwoFactorChallenge
       }
+
+      setAuthCookie("1", remember)
+      setUser(data.user)
+      return data.user
+    },
+    []
+  )
+
+  const loginWithGoogle = React.useCallback<AuthContextValue["loginWithGoogle"]>(
+    async (code) => {
+      const response = await api.post("/api/auth/google/callback", { code })
+      const data = apiData<LoginResponse>(response)
+
+      if ("two_factor_required" in data) {
+        return data as TwoFactorChallenge
+      }
+
+      setAuthCookie("1", true)
+      setUser(data.user)
+      return data.user
+    },
+    []
+  )
+
+  const verifyTwoFactor = React.useCallback<AuthContextValue["verifyTwoFactor"]>(
+    async (challengeToken, code, recoveryCode) => {
+      const response = await api.post("/api/auth/two-factor-challenge", {
+        challenge_token: challengeToken,
+        code: recoveryCode ? undefined : code,
+        recovery_code: recoveryCode,
+      })
+      const data = apiData<{ user: AuthUser }>(response)
+
+      setAuthCookie("1", true)
       setUser(data.user)
       return data.user
     },
@@ -103,11 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = React.useCallback(async () => {
     try {
-      await api.post("/api/v1/auth/logout")
+      await api.post("/api/auth/logout")
     } catch {
       // ignore — we still want to clear local state
     }
-    setAuthToken(null)
     clearAuthCookie()
     setUser(null)
     router.push("/login")
@@ -142,12 +165,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: !!user,
       login,
       register,
+      loginWithGoogle,
+      verifyTwoFactor,
       logout,
       refresh,
       hasRole,
       hasPermission,
     }),
-    [user, isLoading, login, register, logout, refresh, hasRole, hasPermission]
+    [user, isLoading, login, register, loginWithGoogle, verifyTwoFactor, logout, refresh, hasRole, hasPermission]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

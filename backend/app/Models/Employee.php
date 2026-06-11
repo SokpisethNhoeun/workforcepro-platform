@@ -47,6 +47,8 @@ class Employee extends Model
             'probation_ends_at' => 'date',
             'terminated_at' => 'date',
             'base_salary' => 'decimal:2',
+            'tax_identifier' => 'encrypted',
+            'nssf_number' => 'encrypted',
             'metadata' => 'array',
         ];
     }
@@ -104,6 +106,16 @@ class Employee extends Model
     public function leaveRequests(): HasMany
     {
         return $this->hasMany(LeaveRequest::class);
+    }
+
+    public function subordinates(): HasMany
+    {
+        return $this->hasMany(self::class, 'manager_id');
+    }
+
+    public function managedDepartmentIds(): array
+    {
+        return Department::where('manager_user_id', $this->user_id)->pluck('id')->all();
     }
 
     public function getFullNameAttribute(): string

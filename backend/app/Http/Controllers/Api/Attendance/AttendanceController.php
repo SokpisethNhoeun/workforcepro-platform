@@ -45,6 +45,8 @@ class AttendanceController extends Controller
 
     public function show(Attendance $attendance): JsonResponse
     {
+        $this->authorize('view', $attendance);
+
         return ApiResponse::success(new AttendanceResource($this->attendance->find($attendance->id)));
     }
 
@@ -57,6 +59,8 @@ class AttendanceController extends Controller
 
     public function checkOut(CheckOutRequest $request, Attendance $attendance): JsonResponse
     {
+        $this->authorize('checkOut', $attendance);
+
         $attendance = $this->attendance->checkOut($attendance, $request->validated());
 
         return ApiResponse::success(new AttendanceResource($attendance), 'Checked out.');

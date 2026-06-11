@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::get('health', SystemHealthController::class);
 
-    Route::prefix('auth')->group(function () {
+    Route::prefix('auth')->middleware('throttle:auth')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
@@ -41,16 +41,29 @@ Route::prefix('v1')->group(function () {
         Route::post('send-reset-otp', [AuthController::class, 'sendResetOtp']);
         Route::post('reset-password-with-otp', [AuthController::class, 'resetPasswordWithOtp']);
 
+        Route::get('google', [AuthController::class, 'googleRedirect']);
+        Route::post('google/callback', [AuthController::class, 'googleCallback']);
+        Route::post('two-factor-challenge', [AuthController::class, 'twoFactorChallenge']);
+
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('me', [AuthController::class, 'me']);
             Route::post('logout', [AuthController::class, 'logout']);
             Route::post('email/resend', [AuthController::class, 'resendVerification']);
             Route::post('email/verify', [AuthController::class, 'verifyEmail']);
             Route::post('change-password', [AuthController::class, 'changePassword']);
+
+            Route::prefix('two-factor')->group(function () {
+                Route::get('status', [AuthController::class, 'twoFactorStatus']);
+                Route::post('enable', [AuthController::class, 'enableTwoFactor']);
+                Route::post('confirm', [AuthController::class, 'confirmTwoFactor']);
+                Route::delete('disable', [AuthController::class, 'disableTwoFactor']);
+                Route::get('recovery-codes', [AuthController::class, 'twoFactorRecoveryCodes']);
+                Route::post('recovery-codes', [AuthController::class, 'regenerateRecoveryCodes']);
+            });
         });
     });
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('roles/permissions', [RoleController::class, 'permissions'])->middleware('permission:roles.view');
         Route::apiResource('roles', RoleController::class)->except(['show'])->middleware('permission:roles.manage');
         Route::put('users/{user}/roles', [UserRoleController::class, 'update'])->middleware('permission:roles.assign');
@@ -201,6 +214,7 @@ Route::prefix('v1')->group(function () {
         Route::get('documents', [DocumentController::class, 'index'])->middleware('permission:documents.view');
         Route::post('documents', [DocumentController::class, 'store'])->middleware('permission:documents.manage');
         Route::get('documents/{document}', [DocumentController::class, 'show'])->middleware('permission:documents.view');
+        Route::get('documents/{document}/download', [DocumentController::class, 'download'])->middleware('permission:documents.view');
         Route::put('documents/{document}', [DocumentController::class, 'update'])->middleware('permission:documents.manage');
         Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->middleware('permission:documents.manage');
 

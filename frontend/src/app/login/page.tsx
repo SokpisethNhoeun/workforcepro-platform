@@ -12,6 +12,8 @@ import { z } from "zod"
 import { Button } from "@heroui/react"
 
 import { AuthCard } from "@/components/auth/auth-card"
+import { GoogleButton } from "@/components/auth/google-button"
+import { TwoFactorChallenge } from "@/components/auth/two-factor-challenge"
 import { Input } from "@/components/ui/input"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -29,6 +31,7 @@ function LoginInner() {
   const searchParams = useSearchParams()
   const auth = useAuth()
   const [showPassword, setShowPassword] = React.useState(false)
+  const [challengeToken, setChallengeToken] = React.useState<string | null>(null)
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(schema),
@@ -39,18 +42,36 @@ function LoginInner() {
     },
   })
 
+  const redirectAfterLogin = React.useCallback(() => {
+    const next = searchParams.get("next")
+    router.push(next && next.startsWith("/") ? next : "/dashboard")
+  }, [router, searchParams])
+
   async function onSubmit(values: LoginForm) {
     try {
-      await auth.login(values.email, values.password, values.remember ?? false)
+      const result = await auth.login(values.email, values.password, values.remember ?? false)
+      if ("two_factor_required" in result) {
+        setChallengeToken(result.challenge_token)
+        return
+      }
       sileo.success({ title: "Signed in", description: "Welcome back!" })
-      const next = searchParams.get("next")
-      router.push(next && next.startsWith("/") ? next : "/dashboard")
+      redirectAfterLogin()
     } catch (error) {
       sileo.error({
         title: "Sign in failed",
         description: apiErrorMessage(error, "Check your credentials and try again."),
       })
     }
+  }
+
+  if (challengeToken) {
+    return (
+      <TwoFactorChallenge
+        challengeToken={challengeToken}
+        onSuccess={() => redirectAfterLogin()}
+        onCancel={() => setChallengeToken(null)}
+      />
+    )
   }
 
   return (
@@ -127,9 +148,29 @@ function LoginInner() {
           fullWidth
           className="mt-2"
         >
-          {form.formState.isSubmitting ? "Signing in…" : "Sign in"}
+          {form.formState.isSubmitting ? "Signing in..." : "Sign in"}
         </Button>
       </form>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+        </div>
+      </div>
+
+      <GoogleButton
+        onSuccess={(result) => {
+          if ("two_factor_required" in result) {
+            setChallengeToken(result.challenge_token)
+            return
+          }
+          sileo.success({ title: "Signed in", description: "Welcome back!" })
+          redirectAfterLogin()
+        }}
+      />
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}

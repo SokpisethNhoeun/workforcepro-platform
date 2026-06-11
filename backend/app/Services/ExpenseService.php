@@ -3,14 +3,32 @@
 namespace App\Services;
 
 use App\Models\Expense;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ExpenseService
 {
-    public function paginate(array $filters): LengthAwarePaginator
+    public function paginate(array $filters, ?User $user = null): LengthAwarePaginator
     {
-        return Expense::query()
-            ->with(['employee', 'approver'])
+        $query = Expense::query()
+            ->with(['employee', 'approver']);
+
+        if ($user && ! $user->hasAnyRole(['Admin', 'HR'])) {
+            if ($user->hasRole('Manager')) {
+                $deptIds = $user->employee?->managedDepartmentIds() ?? [];
+                $employeeId = $user->employee?->id;
+                $query->where(function ($q) use ($deptIds, $employeeId) {
+                    $q->whereHas('employee', fn ($e) => $e->whereIn('department_id', $deptIds));
+                    if ($employeeId) {
+                        $q->orWhere('employee_id', $employeeId);
+                    }
+                });
+            } else {
+                $query->where('employee_id', $user->employee?->id);
+            }
+        }
+
+        return $query
             ->when($filters['search'] ?? null, fn ($q, $s) => $q->where('description', 'like', "%{$s}%"))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['category'] ?? null, fn ($q, $v) => $q->where('category', $v))

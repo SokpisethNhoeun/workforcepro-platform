@@ -6,6 +6,7 @@ use App\Exports\EmployeesExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Employees\StoreEmployeeRequest;
 use App\Http\Requests\Employees\UpdateEmployeeRequest;
+use App\Http\Resources\EmployeeListResource;
 use App\Http\Resources\EmployeeResource;
 use App\Imports\EmployeesImport;
 use App\Models\Employee;
@@ -32,7 +33,7 @@ class EmployeeController extends Controller
             'per_page',
         ]));
 
-        return ApiResponse::success(EmployeeResource::collection($paginated)->response()->getData(true)['data'], 'Employees retrieved.', 200, [
+        return ApiResponse::success(EmployeeListResource::collection($paginated)->response()->getData(true)['data'], 'Employees retrieved.', 200, [
             'current_page' => $paginated->currentPage(),
             'last_page' => $paginated->lastPage(),
             'per_page' => $paginated->perPage(),
@@ -49,11 +50,15 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee): JsonResponse
     {
+        $this->authorize('view', $employee);
+
         return ApiResponse::success(new EmployeeResource($this->employees->find($employee->id)));
     }
 
     public function update(UpdateEmployeeRequest $request, Employee $employee): JsonResponse
     {
+        $this->authorize('update', $employee);
+
         $employee = $this->employees->update($employee, $request->validated());
 
         return ApiResponse::success(new EmployeeResource($employee), 'Employee updated.');
@@ -61,6 +66,8 @@ class EmployeeController extends Controller
 
     public function destroy(Employee $employee): JsonResponse
     {
+        $this->authorize('delete', $employee);
+
         $this->employees->delete($employee);
 
         return ApiResponse::success(null, 'Employee deleted.');
