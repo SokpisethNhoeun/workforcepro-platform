@@ -20,10 +20,18 @@ class EmployeeListResource extends JsonResource
             'phone' => $this->phone,
             'work_email' => $this->work_email,
             'hired_at' => $this->hired_at,
+            'base_salary' => $this->base_salary,
+            'salary_currency' => $this->salary_currency,
             'status' => $this->status,
             'department' => $this->whenLoaded('department'),
             'position' => $this->whenLoaded('position'),
             'employment_status' => $this->whenLoaded('employmentStatus'),
+            'user' => $this->whenLoaded('user', fn () => [
+                'id' => $this->user?->id,
+                'name' => $this->user?->name,
+                'email' => $this->user?->email,
+                'roles' => $this->user?->roles->pluck('name')->values() ?? [],
+            ]),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

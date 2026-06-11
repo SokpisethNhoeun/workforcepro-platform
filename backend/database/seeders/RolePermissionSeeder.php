@@ -72,7 +72,12 @@ class RolePermissionSeeder extends Seeder
         $employee = Role::firstOrCreate(['name' => 'Employee', 'guard_name' => 'web']);
 
         $admin->syncPermissions($permissions);
-        $hr->syncPermissions(array_filter($permissions, fn ($permission) => ! str_starts_with($permission, 'settings.')));
+        $hr->syncPermissions(array_filter(
+            $permissions,
+            fn ($permission) => ! str_starts_with($permission, 'settings.')
+                && ! str_starts_with($permission, 'roles.')
+                && $permission !== 'system.health'
+        ));
         $manager->syncPermissions([
             'dashboard.view',
             'employees.view',

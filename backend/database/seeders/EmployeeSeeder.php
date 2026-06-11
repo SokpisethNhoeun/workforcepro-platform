@@ -25,7 +25,7 @@ class EmployeeSeeder extends Seeder
             ['role' => 'Admin', 'name' => 'Workforce Admin', 'email' => 'ahboy5518@gmail.com', 'code' => 'WFP-0001', 'department' => 'HR', 'position' => 'HR-DIR'],
             ['role' => 'HR', 'name' => 'Sokha HR', 'email' => 'ahboy5519@gmail.com', 'code' => 'WFP-0002', 'department' => 'HR', 'position' => 'HR-SPEC'],
             ['role' => 'Manager', 'name' => 'Dara Manager', 'email' => 'ahboy1819@gmail.com', 'code' => 'WFP-0003', 'department' => 'OPS', 'position' => 'OPS-MGR'],
-            ['role' => 'Employee', 'name' => 'Chan Employee', 'email' => 'sokpisethnhom09631@gmail.com', 'code' => 'WFP-0004', 'department' => 'ENG', 'position' => 'ENG-SE'],
+            ['role' => 'Admin', 'name' => 'Sokpiseth Admin', 'email' => 'sokpisethnhom09631@gmail.com', 'code' => 'WFP-0004', 'department' => 'ENG', 'position' => 'ENG-SE'],
         ];
 
         $active = EmploymentStatus::where('code', 'active')->first();

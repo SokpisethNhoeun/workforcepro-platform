@@ -17,6 +17,8 @@ import { TwoFactorChallenge } from "@/components/auth/two-factor-challenge"
 import { Input } from "@/components/ui/input"
 import { apiErrorMessage } from "@/lib/api/client"
 import { useAuth } from "@/lib/auth/auth-context"
+import { canAccessUserRoute, getDefaultRouteForUser } from "@/lib/auth/routes"
+import type { AuthUser } from "@/lib/auth/types"
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -42,9 +44,9 @@ function LoginInner() {
     },
   })
 
-  const redirectAfterLogin = React.useCallback(() => {
+  const redirectAfterLogin = React.useCallback((user: AuthUser) => {
     const next = searchParams.get("next")
-    router.push(next && next.startsWith("/") ? next : "/dashboard")
+    router.push(next && next.startsWith("/") && canAccessUserRoute(user, next) ? next : getDefaultRouteForUser(user))
   }, [router, searchParams])
 
   async function onSubmit(values: LoginForm) {
@@ -55,7 +57,7 @@ function LoginInner() {
         return
       }
       sileo.success({ title: "Signed in", description: "Welcome back!" })
-      redirectAfterLogin()
+      redirectAfterLogin(result)
     } catch (error) {
       sileo.error({
         title: "Sign in failed",
@@ -68,7 +70,7 @@ function LoginInner() {
     return (
       <TwoFactorChallenge
         challengeToken={challengeToken}
-        onSuccess={() => redirectAfterLogin()}
+        onSuccess={(user) => redirectAfterLogin(user)}
         onCancel={() => setChallengeToken(null)}
       />
     )
@@ -168,7 +170,7 @@ function LoginInner() {
             return
           }
           sileo.success({ title: "Signed in", description: "Welcome back!" })
-          redirectAfterLogin()
+          redirectAfterLogin(result)
         }}
       />
 

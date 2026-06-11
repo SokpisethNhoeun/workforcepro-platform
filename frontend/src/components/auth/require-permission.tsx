@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import * as React from "react"
 
 import { useAuth } from "@/lib/auth/auth-context"
+import { getDefaultRouteForUser } from "@/lib/auth/routes"
 
 type RequirePermissionProps = {
   permission?: string | string[]
@@ -24,7 +25,7 @@ export function RequirePermission({ permission, role, children }: RequirePermiss
 
   React.useEffect(() => {
     if (!isLoading && user && !allowed) {
-      router.replace("/unauthorized")
+      router.replace(getDefaultRouteForUser(user))
     }
   }, [isLoading, user, allowed, router])
 
